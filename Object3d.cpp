@@ -1,6 +1,7 @@
 ﻿#include "Object3d.h"
 #include <d3dcompiler.h>
 #include <DirectXTex.h>
+#include <random>
 
 #pragma comment(lib, "d3dcompiler.lib")
 
@@ -342,7 +343,7 @@ void Object3d::LoadTexture()
 	ScratchImage scratchImg{};
 
 	// WICテクスチャのロード
-	result = LoadFromWICFile( L"Resources/tex1.png", WIC_FLAGS_NONE, &metadata, scratchImg);
+	result = LoadFromWICFile( L"Resources/kusa.png", WIC_FLAGS_NONE, &metadata, scratchImg);
 	assert(SUCCEEDED(result));
 
 	ScratchImage mipChain{};
@@ -716,6 +717,13 @@ bool Object3d::Initialize()
 	assert(SUCCEEDED(result));
 
 	return true;
+
+	//乱数シード生成器
+	std::random_device seed_gen;
+	//メルセンヌ・ツイスター
+	std::mt19937_64 engine(seed_gen());
+	//乱数範囲(座標用)
+	std::uniform_real_distribution<float> posDist(-20.0f, 20.0f);
 }
 
 void Object3d::Update()
