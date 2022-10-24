@@ -37,6 +37,15 @@ ParticleManager::VertexPos ParticleManager::vertices[vertexCount];
 //unsigned short Object3d::indices[indexCount];
 XMMATRIX ParticleManager::matBillboard = XMMatrixIdentity();
 XMMATRIX ParticleManager::matBillboardY = XMMatrixIdentity();
+//XMFLOAT3同士の加算処理
+const DirectX::XMFLOAT3 operator+(const DirectX::XMFLOAT3& lhs, const DirectX::XMFLOAT3& rhs)
+{
+	XMFLOAT3 result;
+	result.x = lhs.x + rhs.x;
+	result.y = lhs.y + rhs.y;
+	result.z = lhs.z + rhs.z;
+	return result;
+}
 
 void ParticleManager::StaticInitialize(ID3D12Device * device, int window_width, int window_height)
 {
@@ -303,13 +312,25 @@ void ParticleManager::InitializeGraphicsPipeline()
 	// デプスステンシルステート
 	gpipeline.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
 
+	//デプスの書き込みを禁止
+	gpipeline.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
+
 	// レンダーターゲットのブレンド設定
 	D3D12_RENDER_TARGET_BLEND_DESC blenddesc{};
 	blenddesc.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;	// RBGA全てのチャンネルを描画
 	blenddesc.BlendEnable = true;
-	blenddesc.BlendOp = D3D12_BLEND_OP_ADD;
-	blenddesc.SrcBlend = D3D12_BLEND_SRC_ALPHA;
-	blenddesc.DestBlend = D3D12_BLEND_INV_SRC_ALPHA;
+	//------------------半透明合成--------------------
+	//blenddesc.BlendOp = D3D12_BLEND_OP_ADD;
+	//blenddesc.SrcBlend = D3D12_BLEND_SRC_ALPHA;
+	//blenddesc.DestBlend = D3D12_BLEND_INV_SRC_ALPHA;
+	//-----------------加算合成-----------------------
+	//blenddesc.BlendOp = D3D12_BLEND_OP_ADD;
+	//blenddesc.SrcBlend = D3D12_BLEND_ONE;
+	//blenddesc.DestBlend = D3D12_BLEND_ONE;
+	//---------------減算合成-------------------------
+	blenddesc.BlendOp = D3D12_BLEND_OP_REV_SUBTRACT;
+	blenddesc.SrcBlend = D3D12_BLEND_ONE;
+	blenddesc.DestBlend = D3D12_BLEND_ONE;
 
 	blenddesc.BlendOpAlpha = D3D12_BLEND_OP_ADD;
 	blenddesc.SrcBlendAlpha = D3D12_BLEND_ONE;
@@ -372,7 +393,7 @@ void ParticleManager::LoadTexture()
 	ScratchImage scratchImg{};
 
 	// WICテクスチャのロード
-	result = LoadFromWICFile( L"Resources/texture.png", WIC_FLAGS_NONE, &metadata, scratchImg);
+	result = LoadFromWICFile( L"Resources/particle.png", WIC_FLAGS_NONE, &metadata, scratchImg);
 	assert(SUCCEEDED(result));
 
 	ScratchImage mipChain{};
@@ -578,13 +599,13 @@ void ParticleManager::CreateModel()
 ////メンバ変数にコピー
 //std::copy(std::begin(verticesPoint), std::end(verticesPoint), vertices);
 
-for (int i = 0; i < vertexCount; i++) {
-	//X,Y,Z全て[-5.0f,+5.0f]でランダムに分布
-	const float rnd_width = 10.0f;
-	vertices[i].pos.x = (float)rand() / RAND_MAX * rnd_width - rnd_width / 2.0f;
-	vertices[i].pos.y = (float)rand() / RAND_MAX * rnd_width - rnd_width / 2.0f;
-	vertices[i].pos.z = (float)rand() / RAND_MAX * rnd_width - rnd_width / 2.0f;
-}
+//for (int i = 0; i < vertexCount; i++) {
+//	//X,Y,Z全て[-5.0f,+5.0f]でランダムに分布
+//	const float rnd_width = 10.0f;
+//	vertices[i].pos.x = (float)rand() / RAND_MAX * rnd_width - rnd_width / 2.0f;
+//	vertices[i].pos.y = (float)rand() / RAND_MAX * rnd_width - rnd_width / 2.0f;
+//	vertices[i].pos.z = (float)rand() / RAND_MAX * rnd_width - rnd_width / 2.0f;
+//}
 
 //四角形のインデックスデータ
 //unsigned short indicesSquare[] = {
@@ -777,27 +798,12 @@ void ParticleManager::Update()
 	HRESULT result;
 	XMMATRIX matScale, matRot, matTrans;
 
-	// スケール、回転、平行移動行列の計算
-	matScale = XMMatrixScaling(scale.x, scale.y, scale.z);
-	//matRot = XMMatrixIdentity();
-	//matRot *= XMMatrixRotationZ(XMConvertToRadians(rotation.z));
-	//matRot *= XMMatrixRotationX(XMConvertToRadians(rotation.x));
-	//matRot *= XMMatrixRotationY(XMConvertToRadians(rotation.y));
-	//matTrans = XMMatrixTranslation(position.x, position.y, position.z);
+	//寿命が尽きたパーティクルを全削除
 
-	// ワールド行列の合成
-	//matWorld = XMMatrixIdentity(); // 変形をリセット
-	//matWorld *= matBillboard;
-	//matWorld *= matBillboardY;
-	//matWorld *= matScale; // ワールド行列にスケーリングを反映
-	//matWorld *= matRot; // ワールド行列に回転を反映
-	//matWorld *= matTrans; // ワールド行列に平行移動を反映
+	//全パーティクル更新
 
-	// 親オブジェクトがあれば
-	//if (parent != nullptr) {
-	//	// 親オブジェクトのワールド行列を掛ける
-	//	matWorld *= parent->matWorld;
-	//}
+	//頂点バッファへデータ転送
+
 
 	// 定数バッファへデータ転送
 	ConstBufferData* constMap = nullptr;
@@ -833,4 +839,17 @@ void ParticleManager::Draw()
 	//cmdList->DrawIndexedInstanced(3, 1, 0, 0, 0);
 	cmdList->DrawInstanced(_countof(vertices), 1, 0, 0);
 
+}
+
+void ParticleManager::Add(int life, XMFLOAT3 position, XMFLOAT3 velocity, XMFLOAT3 accel)
+{
+	//リストに要素を追加
+	particles.emplace_front();
+	//追加した要素の参照
+	Particle& p = particles.front();
+	//値のセット
+	p.position = position;
+	p.velocity = velocity;
+	p.accel = accel;
+	p.num_frame = life;
 }
