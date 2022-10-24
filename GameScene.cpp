@@ -46,7 +46,7 @@ void GameScene::Initialize(DirectXCommon* dxCommon, Input* input)
 		pos.y = (float)rand() / RAND_MAX * md_pos - md_pos / 2.0f;
 		pos.z = (float)rand() / RAND_MAX * md_pos - md_pos / 2.0f;
 		//X,Y,Z全て[-5.0f,5.0f]でランダムに分布
-		const float md_vel = 10.0f;
+		const float md_vel = 0.1f;
 		XMFLOAT3 vel{};
 		vel.x = (float)rand() / RAND_MAX * md_vel - md_vel / 2.0f;
 		vel.y = (float)rand() / RAND_MAX * md_vel - md_vel / 2.0f;

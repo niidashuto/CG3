@@ -324,13 +324,13 @@ void ParticleManager::InitializeGraphicsPipeline()
 	//blenddesc.SrcBlend = D3D12_BLEND_SRC_ALPHA;
 	//blenddesc.DestBlend = D3D12_BLEND_INV_SRC_ALPHA;
 	//-----------------加算合成-----------------------
-	//blenddesc.BlendOp = D3D12_BLEND_OP_ADD;
-	//blenddesc.SrcBlend = D3D12_BLEND_ONE;
-	//blenddesc.DestBlend = D3D12_BLEND_ONE;
-	//---------------減算合成-------------------------
-	blenddesc.BlendOp = D3D12_BLEND_OP_REV_SUBTRACT;
+	blenddesc.BlendOp = D3D12_BLEND_OP_ADD;
 	blenddesc.SrcBlend = D3D12_BLEND_ONE;
 	blenddesc.DestBlend = D3D12_BLEND_ONE;
+	//---------------減算合成-------------------------
+	//blenddesc.BlendOp = D3D12_BLEND_OP_REV_SUBTRACT;
+    //blenddesc.SrcBlend = D3D12_BLEND_ONE;
+	//blenddesc.DestBlend = D3D12_BLEND_ONE;
 
 	blenddesc.BlendOpAlpha = D3D12_BLEND_OP_ADD;
 	blenddesc.SrcBlendAlpha = D3D12_BLEND_ONE;
@@ -799,17 +799,41 @@ void ParticleManager::Update()
 	XMMATRIX matScale, matRot, matTrans;
 
 	//寿命が尽きたパーティクルを全削除
+	particles.remove_if(
+		[](Particle& x) {
+			return x.frame >= x.num_frame;
+		}
+	);
 
 	//全パーティクル更新
-
+	for (std::forward_list<Particle>::iterator it = particles.begin(); it != particles.end(); it++)
+	{
+		//経過フレーム数をカウント
+		it->frame++;
+		//速度に加速度を加算
+		it->velocity = it->velocity + it->accel;
+		//速度による移動
+		it->position = it->position + it->velocity;
+	}
 	//頂点バッファへデータ転送
-
+	VertexPos* vertMap = nullptr;
+	result = vertBuff->Map(0, nullptr, (void**)&vertMap);
+	if (SUCCEEDED(result)) {
+		//パーティクルの情報を一つずつ反映
+		for (std::forward_list<Particle>::iterator it = particles.begin();
+			it != particles.end();
+			it++) {
+			//座標
+			vertMap->pos = it->position;
+			//次の頂点へ
+			vertMap++;
+		}
+		vertBuff->Unmap(0, nullptr);
+	}
 
 	// 定数バッファへデータ転送
 	ConstBufferData* constMap = nullptr;
 	result = constBuff->Map(0, nullptr, (void**)&constMap);
-	//constMap->color = color;
-	//constMap->mat = matWorld * matView * matProjection;	// 行列の合成
 	constMap->mat = matView * matProjection;// 行列の合成
 	constMap->matBillboard = matBillboard;
 	constBuff->Unmap(0, nullptr);
@@ -837,8 +861,8 @@ void ParticleManager::Draw()
 	// 描画コマンド
 	//cmdList->DrawIndexedInstanced(_countof(indices), 1, 0, 0, 0);
 	//cmdList->DrawIndexedInstanced(3, 1, 0, 0, 0);
-	cmdList->DrawInstanced(_countof(vertices), 1, 0, 0);
-
+	//cmdList->DrawInstanced(_countof(vertices), 1, 0, 0);
+	cmdList->DrawInstanced((UINT)std::distance(particles.begin(), particles.end()), 1, 0, 0);
 }
 
 void ParticleManager::Add(int life, XMFLOAT3 position, XMFLOAT3 velocity, XMFLOAT3 accel)
